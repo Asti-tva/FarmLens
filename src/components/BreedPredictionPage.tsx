@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Badge } from "./ui/badge"
 import { Separator } from "./ui/separator"
 import { motion } from "motion/react"
-import { Upload, ArrowLeft, Camera, Zap, CheckCircle, LogOut, User, History, Clock, Star, Eye, Trash2, Wheat } from "lucide-react"
+import { Upload, ArrowLeft, Camera, Zap, CheckCircle, LogOut, User, History, Clock, Star, Eye, Trash2, Wheat, MessageSquare } from "lucide-react"
 import { ImageWithFallback } from "./figma/ImageWithFallback"
 import { supabase } from '../supabaseClient'
+import { Textarea } from "./ui/textarea"
+import { Label } from "./ui/label"
 
 // --- INTERFACES FOR YOUR DATA ---
 interface BreedPredictionPageProps {
@@ -30,6 +32,7 @@ interface PastScan {
   predicted_breed: string
   confidence_score: number
   created_at: string
+  feedback_breed?: string | null
 }
 
 // --- HELPER FUNCTION TO CONVERT CAMERA IMAGE TO FILE ---
@@ -49,7 +52,12 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
   const [selectedScanDetails, setSelectedScanDetails] = useState<PastScan | null>(null)
   const [pastScans, setPastScans] = useState<PastScan[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [isDragging, setIsDragging] = useState(false); // <-- ADDED for drag-and-drop UI
+  const [isDragging, setIsDragging] = useState(false);
+  
+  const [feedbackText, setFeedbackText] = useState("");
+  const [currentPredictionId, setCurrentPredictionId] = useState<number | null>(null);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   const fetchPastScans = async () => {
     try {
@@ -83,13 +91,15 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
     }
   }, [isAuthenticated]);
 
-  // --- ADDED: A central function to process any image file ---
   const processFile = (file: File | undefined) => {
     if (file && file.type.startsWith('image/')) {
         setSelectedImageFile(file);
         const previewUrl = URL.createObjectURL(file);
         setSelectedImage(previewUrl);
         setPrediction(null);
+        setFeedbackSubmitted(false);
+        setFeedbackText("");
+        setCurrentPredictionId(null);
     }
   }
 
@@ -99,13 +109,10 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
   
   const handleCameraCapture = async (imageUrl: string) => {
     setIsCameraOpen(false);
-    setSelectedImage(imageUrl);
-    setPrediction(null);
     const file = await dataUrlToFile(imageUrl, `capture-${Date.now()}.jpg`);
     processFile(file);
   };
 
-  // --- ADDED: Handlers for drag-and-drop ---
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(true);
@@ -121,7 +128,6 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
     setIsDragging(false);
     processFile(e.dataTransfer.files?.[0]);
   };
-  // --- END of drag-and-drop handlers ---
 
   const analyzeCattle = async () => {
     if (!selectedImageFile) {
@@ -131,6 +137,8 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
 
     setIsAnalyzing(true);
     setPrediction(null);
+    setFeedbackSubmitted(false);
+    setFeedbackText("");
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -167,15 +175,21 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
 
       const topPrediction = predictionResult.predictions[0];
       
-      const { error: insertError } = await supabase
+      const { data: newPredictionData, error: insertError } = await supabase
         .from('predictions')
         .insert({
           image_filename: filePath,
           predicted_breed: topPrediction.breed,
           confidence_score: topPrediction.score
-        });
+        })
+        .select('id')
+        .single();
       
       if (insertError) throw insertError;
+
+      if (newPredictionData) {
+        setCurrentPredictionId(newPredictionData.id);
+      }
 
       await fetchPastScans();
 
@@ -183,6 +197,28 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
       alert(error.message);
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleFeedbackSubmit = async () => {
+    if (!feedbackText.trim() || !currentPredictionId) return;
+    
+    setIsSubmittingFeedback(true);
+    try {
+      const { error } = await supabase
+        .from('predictions')
+        .update({ feedback_breed: feedbackText })
+        .eq('id', currentPredictionId);
+      
+      if (error) throw error;
+
+      setFeedbackSubmitted(true);
+      await fetchPastScans();
+      
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setIsSubmittingFeedback(false);
     }
   };
 
@@ -406,6 +442,21 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
                         Confidence Level
                       </p>
                     </div>
+                    
+                    {/* --- ADDED: Display Feedback in Details View --- */}
+                    {selectedScanDetails.feedback_breed && (
+                      <div className="mt-4 space-y-2 border-t pt-4">
+                        <h4 className="font-semibold text-foreground flex items-center">
+                          <MessageSquare className="h-4 w-4 mr-2 text-muted-foreground"/>
+                          User Feedback
+                        </h4>
+                        <p className="text-muted-foreground italic p-2 bg-muted/50 rounded-md">
+                          "{selectedScanDetails.feedback_breed}"
+                        </p>
+                      </div>
+                    )}
+                    {/* --- END of Feedback Display --- */}
+
                   </CardContent>
                 </Card>
               </div>
@@ -477,7 +528,6 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {/* --- UPDATED DIV FOR DRAG AND DROP --- */}
                       <div 
                         onClick={triggerFileInput}
                         onDragOver={handleDragOver}
@@ -539,6 +589,37 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
                           </div>
                         </div>
                       ))}
+                      
+                      <Separator className="pt-4"/>
+                      <div className="space-y-3">
+                        <Label htmlFor="feedback" className="flex items-center space-x-2 font-semibold">
+                          <MessageSquare className="h-4 w-4 text-muted-foreground"/>
+                          <span>Is the prediction incorrect? Provide feedback.</span>
+                        </Label>
+                        {feedbackSubmitted ? (
+                          <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <CheckCircle className="h-6 w-6 text-green-600 mx-auto mb-2" />
+                            <p className="text-sm font-medium text-green-800">Thank you for your feedback!</p>
+                          </div>
+                        ) : (
+                          <>
+                            <Textarea
+                              id="feedback"
+                              placeholder="e.g., 'This is actually a Gir cow.'"
+                              value={feedbackText}
+                              onChange={(e) => setFeedbackText(e.target.value)}
+                            />
+                            <Button 
+                              onClick={handleFeedbackSubmit}
+                              disabled={isSubmittingFeedback || !feedbackText.trim()}
+                              className="w-full"
+                            >
+                              {isSubmittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+
                     </motion.div>
                   ) : (
                     <div className="text-center py-12">
