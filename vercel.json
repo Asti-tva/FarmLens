@@ -1,0 +1,8 @@
+{
+    "rewrites": [
+      {
+        "source": "/api/:path*",
+        "destination": "https://cattle-model.vercel.app/api/:path*"
+      }
+    ]
+  }
