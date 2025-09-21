@@ -1,12 +1,11 @@
 import { useState, useRef, useEffect } from "react"
-import { useIsMobile } from "./ui/use-mobile" // Assuming this hook exists from your files
 import { CameraCapture } from "./CameraCapture"
 import { Button } from "./ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Badge } from "./ui/badge"
 import { Separator } from "./ui/separator"
 import { motion } from "motion/react"
-import { Upload, ArrowLeft, Camera, Zap, CheckCircle, LogOut, User, History, Clock, Star, Eye, Trash2, Wheat, MessageSquare, Menu, X } from "lucide-react"
+import { Upload, ArrowLeft, Camera, Zap, CheckCircle, LogOut, User, History, Clock, Star, Eye, Trash2, Wheat, MessageSquare } from "lucide-react"
 import { ImageWithFallback } from "./figma/ImageWithFallback"
 import { supabase } from '../supabaseClient'
 import { Textarea } from "./ui/textarea"
@@ -54,15 +53,11 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
   const [pastScans, setPastScans] = useState<PastScan[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false);
+  
   const [feedbackText, setFeedbackText] = useState("");
   const [currentPredictionId, setCurrentPredictionId] = useState<number | null>(null);
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
-
-  // --- ADDED FOR MOBILE SIDEBAR ---
-  const isMobile = useIsMobile();
-  const [showSidebar, setShowSidebar] = useState(false);
-
 
   const fetchPastScans = async () => {
     try {
@@ -254,9 +249,6 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
   const viewScanDetails = (scan: PastScan) => {
     setSelectedScanDetails(scan);
     setViewMode("details");
-    if (isMobile) {
-      setShowSidebar(false);
-    }
   };
 
   const backToPrediction = () => {
@@ -267,84 +259,10 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
     setSelectedImageFile(null);
   };
   
-  const SidebarContent = () => (
-    <>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-lg font-semibold text-primary mb-1">Past Scans</h2>
-          <p className="text-sm text-primary/70">View your previous predictions</p>
-        </div>
-        {isMobile && (
-          <Button variant="ghost" size="sm" onClick={() => setShowSidebar(false)}>
-            <X className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-      <Separator className="mb-6" />
-      <div className="space-y-3">
-        {pastScans.map((scan) => (
-          <Card 
-            key={scan.id} 
-            className="cursor-pointer hover:shadow-md transition-shadow group border-primary/20 bg-white/80"
-            onClick={() => viewScanDetails(scan)}
-          >
-            <CardContent className="p-4">
-              <div className="flex space-x-3">
-                <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                  <ImageWithFallback
-                    src={scan.image_url}
-                    alt={scan.predicted_breed}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-medium text-primary text-sm truncate">
-                      {scan.predicted_breed}
-                    </h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deletePastScan(scan);
-                      }}
-                      className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Badge variant="secondary" className="text-xs">
-                      <Star className="h-2.5 w-2.5 mr-1" />
-                      {(scan.confidence_score * 100).toFixed(2)}%
-                    </Badge>
-                  </div>
-                  <div className="flex items-center space-x-1 text-xs text-primary/60">
-                    <Clock className="h-3 w-3" />
-                    <span>{new Date(scan.created_at).toLocaleDateString()} • {new Date(scan.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {pastScans.length === 0 && (
-        <div className="text-center py-8">
-          <History className="h-8 w-8 text-primary/40 mx-auto mb-2" />
-          <p className="text-sm text-primary/60">No past scans yet</p>
-          <p className="text-xs text-primary/40 mt-1">Your predictions will appear here</p>
-        </div>
-      )}
-    </>
-  );
-
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b border-border/50 bg-background/80 backdrop-blur-md sticky top-0 z-20">
+      <div className="border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -365,12 +283,12 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="text-sm text-muted-foreground hidden md:block">
+              <div className="text-sm text-muted-foreground">
                 AI Cattle Breed Prediction
               </div>
               {isAuthenticated && (
                 <div className="flex items-center space-x-2">
-                  <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-primary/10 rounded-full">
+                  <div className="flex items-center space-x-2 px-3 py-1.5 bg-primary/10 rounded-full">
                     <User className="h-3 w-3 text-primary" />
                     <span className="text-xs text-primary font-medium">Signed In</span>
                   </div>
@@ -381,50 +299,90 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
                     className="text-muted-foreground hover:text-foreground"
                   >
                     <LogOut className="h-4 w-4 mr-1" />
-                    <span className="hidden md:inline">Sign Out</span>
+                    Sign Out
                   </Button>
                 </div>
               )}
-              {/* --- ADDED: Mobile History Button --- */}
-              <div className="md:hidden">
-                <Button variant="ghost" size="sm" onClick={() => setShowSidebar(true)}>
-                  <History className="h-5 w-5" />
-                </Button>
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-1 relative">
-        {/* Mobile Backdrop */}
-        {isMobile && showSidebar && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-30"
-            onClick={() => setShowSidebar(false)}
-          />
-        )}
-        
-        {/* Sidebar for both Mobile Drawer and Desktop Fixed */}
+      <div className="flex h-[calc(100vh-73px)]">
+        {/* Sidebar */}
         <motion.div
-          initial={false}
-          animate={isMobile ? (showSidebar ? { x: 0 } : { x: "-100%" }) : { x: 0 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-          className={`
-            ${isMobile 
-              ? 'fixed inset-y-0 left-0 z-40 w-80 bg-background shadow-lg' 
-              : 'relative w-80'
-            }
-            border-r border-border p-6 overflow-y-auto
-          `}
-          style={!isMobile ? { backgroundColor: '#0D4E3B25' } : {}}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+          className="w-80 border-r border-border p-6 overflow-y-auto"
+          style={{ backgroundColor: '#0D4E3B25' }}
         >
-          <SidebarContent />
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-primary mb-1">Past Scans</h2>
+            <p className="text-sm text-primary/70">View your previous predictions</p>
+          </div>
+
+          <Separator className="mb-6" />
+
+          <div className="space-y-3">
+            {pastScans.map((scan) => (
+              <Card 
+                key={scan.id} 
+                className="cursor-pointer hover:shadow-md transition-shadow group border-primary/20 bg-white/80"
+                onClick={() => viewScanDetails(scan)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex space-x-3">
+                    <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                      <ImageWithFallback
+                        src={scan.image_url}
+                        alt={scan.predicted_breed}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-medium text-primary text-sm truncate">
+                          {scan.predicted_breed}
+                        </h3>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deletePastScan(scan);
+                          }}
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Badge variant="secondary" className="text-xs">
+                          <Star className="h-2.5 w-2.5 mr-1" />
+                          {(scan.confidence_score * 100).toFixed(2)}%
+                        </Badge>
+                      </div>
+                      <div className="flex items-center space-x-1 text-xs text-primary/60">
+                        <Clock className="h-3 w-3" />
+                        <span>{new Date(scan.created_at).toLocaleDateString()} • {new Date(scan.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {pastScans.length === 0 && (
+            <div className="text-center py-8">
+              <History className="h-8 w-8 text-primary/40 mx-auto mb-2" />
+              <p className="text-sm text-primary/60">No past scans yet</p>
+              <p className="text-xs text-primary/40 mt-1">Your predictions will appear here</p>
+            </div>
+          )}
         </motion.div>
-        
+
         {/* Main Content */}
         <div className="flex-1 p-6 overflow-y-auto">
           {viewMode === "details" && selectedScanDetails ? (
@@ -485,6 +443,7 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
                       </p>
                     </div>
                     
+                    {/* --- ADDED: Display Feedback in Details View --- */}
                     {selectedScanDetails.feedback_breed && (
                       <div className="mt-4 space-y-2 border-t pt-4">
                         <h4 className="font-semibold text-foreground flex items-center">
@@ -496,6 +455,8 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
                         </p>
                       </div>
                     )}
+                    {/* --- END of Feedback Display --- */}
+
                   </CardContent>
                 </Card>
               </div>
@@ -516,7 +477,7 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid lg:grid-cols-2 gap-8">
               <Card className="overflow-hidden">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
@@ -598,6 +559,7 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
                 </CardContent>
               </Card>
 
+              {/* Results Section */}
               <Card className="overflow-hidden">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
