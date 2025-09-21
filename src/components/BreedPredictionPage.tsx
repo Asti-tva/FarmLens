@@ -49,6 +49,7 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
   const [selectedScanDetails, setSelectedScanDetails] = useState<PastScan | null>(null)
   const [pastScans, setPastScans] = useState<PastScan[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isDragging, setIsDragging] = useState(false); // <-- ADDED for drag-and-drop UI
 
   const fetchPastScans = async () => {
     try {
@@ -82,14 +83,18 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
     }
   }, [isAuthenticated]);
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  // --- ADDED: A central function to process any image file ---
+  const processFile = (file: File | undefined) => {
+    if (file && file.type.startsWith('image/')) {
+        setSelectedImageFile(file);
+        const previewUrl = URL.createObjectURL(file);
+        setSelectedImage(previewUrl);
+        setPrediction(null);
+    }
+  }
 
-    setSelectedImageFile(file);
-    const previewUrl = URL.createObjectURL(file);
-    setSelectedImage(previewUrl);
-    setPrediction(null);
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    processFile(event.target.files?.[0]);
   };
   
   const handleCameraCapture = async (imageUrl: string) => {
@@ -97,10 +102,27 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
     setSelectedImage(imageUrl);
     setPrediction(null);
     const file = await dataUrlToFile(imageUrl, `capture-${Date.now()}.jpg`);
-    setSelectedImageFile(file);
+    processFile(file);
   };
 
-  // --- UPDATED LOGIC ---
+  // --- ADDED: Handlers for drag-and-drop ---
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    processFile(e.dataTransfer.files?.[0]);
+  };
+  // --- END of drag-and-drop handlers ---
+
   const analyzeCattle = async () => {
     if (!selectedImageFile) {
       alert("Please select an image first.");
@@ -127,16 +149,13 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
         .from('cattle-images')
         .getPublicUrl(filePath);
 
-      // --- THIS IS THE FINAL FIX ---
-      // Construct the full API URL using the environment variable
       const apiUrl = `${import.meta.env.VITE_API_BASE_URL || ''}/api/predict`;
 
-      const response = await fetch(apiUrl, { // <-- Use the full URL
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image_url: urlData.publicUrl })
       });
-      // --- END OF FIX ---
 
       if (!response.ok) {
         const errorBody = await response.json();
@@ -192,7 +211,6 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
   const handleCameraFallback = () => setTimeout(() => fileInputRef.current?.click(), 100);
 
   const viewScanDetails = (scan: PastScan) => {
-    // This part can be expanded later to fetch real data
     setSelectedScanDetails(scan);
     setViewMode("details");
   };
@@ -459,7 +477,16 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <div onClick={triggerFileInput} className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors">
+                      {/* --- UPDATED DIV FOR DRAG AND DROP --- */}
+                      <div 
+                        onClick={triggerFileInput}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                          isDragging ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                        }`}
+                      >
                         <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                         <h3 className="font-semibold text-foreground mb-2">
                           Upload Image
