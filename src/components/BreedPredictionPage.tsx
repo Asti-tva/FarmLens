@@ -100,6 +100,7 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
     setSelectedImageFile(file);
   };
 
+  // --- UPDATED LOGIC ---
   const analyzeCattle = async () => {
     if (!selectedImageFile) {
       alert("Please select an image first.");
@@ -126,11 +127,16 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
         .from('cattle-images')
         .getPublicUrl(filePath);
 
-      const response = await fetch('/api/predict', {
+      // --- THIS IS THE FINAL FIX ---
+      // Construct the full API URL using the environment variable
+      const apiUrl = `${import.meta.env.VITE_API_BASE_URL || ''}/api/predict`;
+
+      const response = await fetch(apiUrl, { // <-- Use the full URL
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image_url: urlData.publicUrl })
       });
+      // --- END OF FIX ---
 
       if (!response.ok) {
         const errorBody = await response.json();
@@ -142,9 +148,6 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
 
       const topPrediction = predictionResult.predictions[0];
       
-      // --- FINAL FIX IS HERE ---
-      // The user_id is now removed from the insert call.
-      // The database will set it automatically and securely using the default value.
       const { error: insertError } = await supabase
         .from('predictions')
         .insert({
@@ -152,7 +155,6 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
           predicted_breed: topPrediction.breed,
           confidence_score: topPrediction.score
         });
-      // --- END OF FINAL FIX ---
       
       if (insertError) throw insertError;
 
@@ -190,6 +192,7 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
   const handleCameraFallback = () => setTimeout(() => fileInputRef.current?.click(), 100);
 
   const viewScanDetails = (scan: PastScan) => {
+    // This part can be expanded later to fetch real data
     setSelectedScanDetails(scan);
     setViewMode("details");
   };
@@ -272,6 +275,7 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
               <Card 
                 key={scan.id} 
                 className="cursor-pointer hover:shadow-md transition-shadow group border-primary/20 bg-white/80"
+                onClick={() => viewScanDetails(scan)}
               >
                 <CardContent className="p-4">
                   <div className="flex space-x-3">
@@ -308,17 +312,6 @@ export function BreedPredictionPage({ onBack, onSignOut, isAuthenticated }: Bree
                       <div className="flex items-center space-x-1 text-xs text-primary/60">
                         <Clock className="h-3 w-3" />
                         <span>{new Date(scan.created_at).toLocaleDateString()} • {new Date(scan.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                      <div className="flex space-x-1 mt-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => viewScanDetails(scan)}
-                          className="h-6 text-xs px-2 bg-primary/10 text-primary hover:bg-primary/20"
-                        >
-                          <Eye className="h-2.5 w-2.5 mr-1" />
-                          View
-                        </Button>
                       </div>
                     </div>
                   </div>
