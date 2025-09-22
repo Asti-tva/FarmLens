@@ -9,7 +9,7 @@ const trustIndicators = [
   },
   {
     icon: Award,
-    title: "99.2%",
+    title: "80.15%",
     subtitle: "Accuracy Rate"
   },
   {
