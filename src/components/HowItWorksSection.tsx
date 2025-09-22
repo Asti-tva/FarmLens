@@ -11,7 +11,7 @@ const steps = [
   {
     icon: Cpu,
     title: "AI Analysis",
-    description: "Our advanced machine learning algorithms analyze key morphological features, comparing against our comprehensive breed database with 99.2% accuracy."
+    description: "Our advanced machine learning algorithms analyze key morphological features, comparing against our comprehensive breed database with 80.15% accuracy."
   },
   {
     icon: BarChart3,
